@@ -52,12 +52,31 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message: 'Email already registered' };
     }
     
-    // Create new user with unique ID
+    // Validate role
+    const validRoles = ['reader', 'book_owner', 'admin'];
+    const userRole = userData.role && validRoles.includes(userData.role) ? userData.role : 'reader';
+    
+    // Create new user with unique ID and extended profile fields
     const newUser = {
       id: Date.now().toString(),
-      ...userData,
-      role: 'user', // default role
-      createdAt: new Date().toISOString()
+      name: userData.name,
+      email: userData.email,
+      password: userData.password,
+      phone: userData.phone || '',
+      address: userData.address || '',
+      city: userData.city || '',
+      zipCode: userData.zipCode || '',
+      profilePicture: userData.profilePicture || null,
+      preferences: userData.preferences || {
+        notifications: true,
+        publicProfile: true,
+        shareLocation: false,
+        preferredSwapType: 'both' // 'swap', 'lend', 'donate', or 'both'
+      },
+      bio: userData.bio || '',
+      role: userRole,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
     users.push(newUser);
@@ -84,7 +103,13 @@ export const AuthProvider = ({ children }) => {
     const userIndex = users.findIndex(u => u.id === currentUser.id);
     
     if (userIndex !== -1) {
-      users[userIndex] = { ...users[userIndex], ...updates };
+      // Don't allow direct password update through this method
+      const { password, ...safeUpdates } = updates;
+      users[userIndex] = { 
+        ...users[userIndex], 
+        ...safeUpdates,
+        updatedAt: new Date().toISOString()
+      };
       localStorage.setItem('users', JSON.stringify(users));
       
       const updatedUser = { ...users[userIndex] };
@@ -92,10 +117,73 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(updatedUser);
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       
-      return { success: true };
+      return { success: true, user: updatedUser };
     }
     
     return { success: false, message: 'User not found' };
+  };
+
+  // Change password
+  const changePassword = (currentPassword, newPassword) => {
+    if (!currentUser) {
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.id === currentUser.id);
+    
+    if (userIndex === -1) {
+      return { success: false, message: 'User not found' };
+    }
+
+    if (users[userIndex].password !== currentPassword) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+
+    if (newPassword.length < 6) {
+      return { success: false, message: 'New password must be at least 6 characters' };
+    }
+
+    users[userIndex].password = newPassword;
+    users[userIndex].updatedAt = new Date().toISOString();
+    localStorage.setItem('users', JSON.stringify(users));
+
+    return { success: true, message: 'Password changed successfully' };
+  };
+
+  // Get user by ID
+  const getUserById = (userId) => {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      const userWithoutPassword = { ...user };
+      delete userWithoutPassword.password;
+      return userWithoutPassword;
+    }
+    return null;
+  };
+
+  // Get user's stats (books shared, requests made, etc.)
+  const getUserStats = (userId) => {
+    const books = JSON.parse(localStorage.getItem('books') || '[]');
+    const requests = JSON.parse(localStorage.getItem('requests') || '[]');
+
+    const userBooks = books.filter(b => b.ownerId === userId);
+    const sentRequests = requests.filter(r => r.requesterId === userId);
+    const receivedRequests = requests.filter(r => r.ownerId === userId);
+
+    return {
+      totalBooks: userBooks.length,
+      booksAvailable: userBooks.filter(b => b.status === 'available').length,
+      requestsSent: sentRequests.length,
+      requestsReceived: receivedRequests.length,
+      requestsApproved: receivedRequests.filter(r => r.status === 'approved').length,
+      swapsCompleted: requests.filter(
+        r => (r.requesterId === userId || r.ownerId === userId) && 
+             r.status === 'returned' && 
+             r.requestType === 'swap'
+      ).length
+    };
   };
 
   const value = {
@@ -105,6 +193,9 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    changePassword,
+    getUserById,
+    getUserStats,
     isAuthenticated: !!currentUser
   };
 

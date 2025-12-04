@@ -148,6 +148,58 @@ export const NotificationProvider = ({ children }) => {
     createNotification(ownerId, 'request_returned', message, { bookTitle });
   };
 
+  // When book due date is approaching (due in 3 days)
+  const notifyDueDateApproaching = (userId, bookTitle, dueDate) => {
+    const message = `Your borrowed book "${bookTitle}" is due on ${new Date(dueDate).toLocaleDateString()}`;
+    createNotification(userId, 'due_date_approaching', message, { bookTitle, dueDate });
+  };
+
+  // When book is overdue
+  const notifyBookOverdue = (userId, bookTitle, daysOverdue) => {
+    const message = `Your book "${bookTitle}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue. Please return it soon!`;
+    createNotification(userId, 'book_overdue', message, { bookTitle, daysOverdue });
+  };
+
+  // When book owner sends update about borrowed book
+  const notifyBookUpdate = (userId, bookTitle, updateType, message) => {
+    const fullMessage = `Update about "${bookTitle}": ${message}`;
+    createNotification(userId, 'book_update', fullMessage, { bookTitle, updateType });
+  };
+
+  // When user receives a swap request
+  const notifySwapRequest = (ownerId, requesterName, bookTitle, requesterBookTitle) => {
+    const message = `${requesterName} wants to swap their "${requesterBookTitle}" for your "${bookTitle}"`;
+    createNotification(ownerId, 'swap_request', message, { bookTitle, requesterBookTitle });
+  };
+
+  // When swap is completed
+  const notifySwapCompleted = (userId, bookTitle, partnerBookTitle, partnerName) => {
+    const message = `Your swap with ${partnerName} is complete! You've exchanged "${bookTitle}" for "${partnerBookTitle}"`;
+    createNotification(userId, 'swap_completed', message, { bookTitle, partnerBookTitle });
+  };
+
+  // Send profile update notification (when user updates their profile)
+  const notifyProfileUpdated = (userId) => {
+    const message = `Your profile has been updated successfully`;
+    createNotification(userId, 'profile_updated', message, {});
+  };
+
+  // Send book added to library notification
+  const notifyBookAdded = (userId, bookTitle, availableFor) => {
+    const message = `You've added "${bookTitle}" to your library available for ${availableFor}`;
+    createNotification(userId, 'book_added', message, { bookTitle, availableFor });
+  };
+
+  // Get unread notifications count
+  const getUnreadCount = () => {
+    return notifications.filter(n => !n.read).length;
+  };
+
+  // Get recent notifications (last 10)
+  const getRecentNotifications = (limit = 10) => {
+    return notifications.slice(0, limit);
+  };
+
   const value = {
     notifications,
     unreadCount,
@@ -157,11 +209,20 @@ export const NotificationProvider = ({ children }) => {
     deleteNotification,
     clearAll,
     getNotificationsByType,
+    getUnreadCount,
+    getRecentNotifications,
     // User-triggered notification helpers
     notifyRequestSent,
     notifyRequestApproved,
     notifyRequestRejected,
     notifyBookReturned,
+    notifyDueDateApproaching,
+    notifyBookOverdue,
+    notifyBookUpdate,
+    notifySwapRequest,
+    notifySwapCompleted,
+    notifyProfileUpdated,
+    notifyBookAdded,
     refreshNotifications: loadNotifications
   };
 

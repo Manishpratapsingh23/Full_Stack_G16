@@ -13,7 +13,8 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'reader' // Default role
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +58,10 @@ const Register = () => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
+    if (!formData.role) {
+      newErrors.role = 'Please select a role';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -72,7 +77,8 @@ const Register = () => {
     const result = register({
       name: formData.name,
       email: formData.email,
-      password: formData.password
+      password: formData.password,
+      role: formData.role
     });
     
     if (result.success) {
@@ -137,6 +143,35 @@ const Register = () => {
               placeholder="you@example.com"
             />
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Select Your Role
+            </label>
+            <div className="space-y-3">
+              {[
+                { value: 'reader', label: 'Reader', description: 'Browse and request books' },
+                { value: 'book_owner', label: 'Book Owner', description: 'Lend your books' },
+                { value: 'admin', label: 'Admin', description: 'Manage the platform' }
+              ].map(roleOption => (
+                <label key={roleOption.value} className="flex items-start p-3 border border-gray-300 rounded-lg hover:bg-indigo-50 cursor-pointer transition-colors">
+                  <input
+                    type="radio"
+                    name="role"
+                    value={roleOption.value}
+                    checked={formData.role === roleOption.value}
+                    onChange={handleChange}
+                    className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  />
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-medium text-gray-900">{roleOption.label}</p>
+                    <p className="text-xs text-gray-500">{roleOption.description}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {errors.role && <p className="text-red-500 text-sm mt-2">{errors.role}</p>}
           </div>
 
           <div>

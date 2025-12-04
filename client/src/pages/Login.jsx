@@ -11,7 +11,8 @@ const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    role: 'reader' // Default role selection
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +44,10 @@ const Login = () => {
       newErrors.password = 'Password is required';
     }
 
+    if (!formData.role) {
+      newErrors.role = 'Please select your role';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -58,6 +63,12 @@ const Login = () => {
     const result = login(formData.email, formData.password);
     
     if (result.success) {
+      // Check if selected role matches user's registered role
+      if (result.user.role !== formData.role) {
+        setErrors({ submit: `Your account is registered as a ${result.user.role === 'book_owner' ? 'Book Owner' : result.user.role.charAt(0).toUpperCase() + result.user.role.slice(1)}. Please select the correct role.` });
+        setIsLoading(false);
+        return;
+      }
       navigate('/');
     } else {
       setErrors({ submit: result.message });
@@ -119,6 +130,33 @@ const Login = () => {
               placeholder="Enter your password"
             />
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Login As
+            </label>
+            <div className="space-y-2">
+              {[
+                { value: 'reader', label: 'Reader', icon: '📚' },
+                { value: 'book_owner', label: 'Book Owner', icon: '📖' },
+                { value: 'admin', label: 'Admin', icon: '👨‍💼' }
+              ].map(roleOption => (
+                <label key={roleOption.value} className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-indigo-50 cursor-pointer transition-colors">
+                  <input
+                    type="radio"
+                    name="role"
+                    value={roleOption.value}
+                    checked={formData.role === roleOption.value}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="ml-3 text-lg">{roleOption.icon}</span>
+                  <span className="ml-2 text-sm font-medium text-gray-900">{roleOption.label}</span>
+                </label>
+              ))}
+            </div>
+            {errors.role && <p className="text-red-500 text-sm mt-2">{errors.role}</p>}
           </div>
 
           <button

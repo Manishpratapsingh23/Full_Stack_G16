@@ -165,6 +165,132 @@ export const BookProvider = ({ children }) => {
     return filtered;
   };
 
+  // Advanced search with multiple criteria
+  const advancedSearch = (searchTerm, filters = {}) => {
+    let filtered = [...books];
+
+    // Filter by availability status
+    if (filters.status) {
+      filtered = filtered.filter(book => book.status === filters.status);
+    } else {
+      // Default: only show available books
+      filtered = filtered.filter(book => book.status === 'available');
+    }
+
+    // Search by title, author, or genre (general search term)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(book =>
+        book.title.toLowerCase().includes(term) ||
+        book.author.toLowerCase().includes(term) ||
+        (book.description && book.description.toLowerCase().includes(term))
+      );
+    }
+
+    // Apply specific filters
+    if (filters.title) {
+      filtered = filtered.filter(book =>
+        book.title.toLowerCase().includes(filters.title.toLowerCase())
+      );
+    }
+
+    if (filters.author) {
+      filtered = filtered.filter(book =>
+        book.author.toLowerCase().includes(filters.author.toLowerCase())
+      );
+    }
+
+    if (filters.genre) {
+      const genres = Array.isArray(filters.genre) ? filters.genre : [filters.genre];
+      filtered = filtered.filter(book =>
+        genres.some(g => book.genre.toLowerCase().includes(g.toLowerCase()))
+      );
+    }
+
+    if (filters.location) {
+      filtered = filtered.filter(book =>
+        book.location.toLowerCase().includes(filters.location.toLowerCase())
+      );
+    }
+
+    if (filters.city) {
+      filtered = filtered.filter(book =>
+        book.city && book.city.toLowerCase().includes(filters.city.toLowerCase())
+      );
+    }
+
+    if (filters.availableFor) {
+      filtered = filtered.filter(book =>
+        book.availableFor === filters.availableFor
+      );
+    }
+
+    // Sort results
+    if (filters.sortBy) {
+      filtered = sortBooks(filtered, filters.sortBy);
+    }
+
+    return filtered;
+  };
+
+  // Sort books by different criteria
+  const sortBooks = (booksToSort, sortBy) => {
+    const sorted = [...booksToSort];
+    
+    switch (sortBy) {
+      case 'newest':
+        return sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      case 'title-asc':
+        return sorted.sort((a, b) => a.title.localeCompare(b.title));
+      case 'title-desc':
+        return sorted.sort((a, b) => b.title.localeCompare(a.title));
+      case 'author-asc':
+        return sorted.sort((a, b) => a.author.localeCompare(b.author));
+      case 'author-desc':
+        return sorted.sort((a, b) => b.author.localeCompare(a.author));
+      default:
+        return sorted;
+    }
+  };
+
+  // Get available genres
+  const getAvailableGenres = () => {
+    const genres = new Set();
+    books.forEach(book => {
+      if (book.genre) {
+        book.genre.split(',').forEach(g => genres.add(g.trim()));
+      }
+    });
+    return Array.from(genres).sort();
+  };
+
+  // Get available locations
+  const getAvailableLocations = () => {
+    const locations = new Set();
+    books.forEach(book => {
+      if (book.location) locations.add(book.location);
+      if (book.city) locations.add(book.city);
+    });
+    return Array.from(locations).sort();
+  };
+
+  // Get books by specific criteria
+  const getBooksByCriteria = (criteria) => {
+    return books.filter(book => {
+      let matches = true;
+      
+      if (criteria.genre && book.genre !== criteria.genre) matches = false;
+      if (criteria.author && book.author !== criteria.author) matches = false;
+      if (criteria.owner && book.ownerId !== criteria.owner) matches = false;
+      if (criteria.status && book.status !== criteria.status) matches = false;
+      if (criteria.availableFor && book.availableFor !== criteria.availableFor) matches = false;
+      
+      return matches;
+    });
+  };
+
   // Update book status (for request management)
   const updateBookStatus = (bookId, status) => {
     const bookIndex = books.findIndex(b => b.id === bookId);
@@ -190,6 +316,11 @@ export const BookProvider = ({ children }) => {
     getUserBooks,
     getBookById,
     searchBooks,
+    advancedSearch,
+    sortBooks,
+    getAvailableGenres,
+    getAvailableLocations,
+    getBooksByCriteria,
     updateBookStatus,
     refreshBooks: loadBooks
   };
