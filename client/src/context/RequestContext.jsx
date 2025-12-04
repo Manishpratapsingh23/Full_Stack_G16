@@ -39,7 +39,7 @@ export const RequestProvider = ({ children }) => {
   };
 
   // Create a new request (borrow or swap)
-  const createRequest = (bookId, bookTitle, ownerId, ownerName, requestType) => {
+  const createRequest = (bookId, bookTitle, ownerId, ownerName, requestType, dueDate = null) => {
     if (!currentUser) {
       return { success: false, message: 'You must be logged in to make a request' };
     }
@@ -59,6 +59,14 @@ export const RequestProvider = ({ children }) => {
       return { success: false, message: 'You already have a pending request for this book' };
     }
 
+    // Calculate due date if not provided (30 days from approval)
+    let calculatedDueDate = dueDate;
+    if (!calculatedDueDate && requestType === 'borrow') {
+      const date = new Date();
+      date.setDate(date.getDate() + 30);
+      calculatedDueDate = date.toISOString();
+    }
+
     const newRequest = {
       id: Date.now().toString(),
       bookId,
@@ -69,7 +77,11 @@ export const RequestProvider = ({ children }) => {
       requesterName: currentUser.name || currentUser.email,
       requesterEmail: currentUser.email,
       requestType, // 'borrow' or 'swap'
-      status: 'pending', // pending, approved, rejected, returned
+      status: 'pending', // pending, approved, rejected, returned, overdue
+      dueDate: calculatedDueDate,
+      approvedAt: null,
+      returnedAt: null,
+      notes: '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -188,17 +200,134 @@ export const RequestProvider = ({ children }) => {
     return { success: true };
   };
 
+  // Add notes to a request
+  const updateRequestNotes = (requestId, notes) => {
+    const requestIndex = requests.findIndex(r => r.id === requestId);
+    
+    if (requestIndex === -1) {
+      return { success: false, message: 'Request not found' };
+    }
+
+    const updatedRequests = [...requests];
+    updatedRequests[requestIndex] = {
+      ...updatedRequests[requestIndex],
+      notes,
+      updatedAt: new Date().toISOString()
+    };
+    saveRequests(updatedRequests);
+
+    return { success: true, request: updatedRequests[requestIndex] };
+  };
+
+  // Set or update due date for a request
+  const updateDueDate = (requestId, dueDate) => {
+    const requestIndex = requests.findIndex(r => r.id === requestId);
+    
+    if (requestIndex === -1) {
+      return { success: false, message: 'Request not found' };
+    }
+
+    const updatedRequests = [...requests];
+    updatedRequests[requestIndex] = {
+      ...updatedRequests[requestIndex],
+      dueDate,
+      updatedAt: new Date().toISOString()
+    };
+    saveRequests(updatedRequests);
+
+    return { success: true, request: updatedRequests[requestIndex] };
+  };
+
+  // Check if a request is overdue
+  const isRequestOverdue = (request) => {
+    if (!request.dueDate || request.status !== 'approved') {
+      return false;
+    }
+    
+    const dueDate = new Date(request.dueDate);
+    const today = new Date();
+    return today > dueDate;
+  };
+
+  // Get overdue requests for current user
+  const getOverdueRequests = () => {
+    if (!currentUser) return [];
+    
+    return requests.filter(r => 
+      (r.requesterId === currentUser.id || r.ownerId === currentUser.id) &&
+      isRequestOverdue(r)
+    );
+  };
+
+  // Get requests due soon (within 7 days)
+  const getRequestsDueSoon = () => {
+    if (!currentUser) return [];
+    
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    return requests.filter(r => {
+      if (!r.dueDate || r.status !== 'approved') {
+        return false;
+      }
+
+      const dueDate = new Date(r.dueDate);
+      return r.requesterId === currentUser.id && 
+             dueDate > today && 
+             dueDate <= nextWeek &&
+             !isRequestOverdue(r);
+    });
+  };
+
+  // Get requests by status
+  const getRequestsByStatus = (status) => {
+    return requests.filter(r => r.status === status);
+  };
+
+  // Get active borrowed books for current user
+  const getActiveBorrowedBooks = () => {
+    if (!currentUser) return [];
+    
+    return requests.filter(r =>
+      r.requesterId === currentUser.id &&
+      r.requestType === 'borrow' &&
+      r.status === 'approved' &&
+      !r.returnedAt
+    );
+  };
+
+  // Get active lent books for current user
+  const getActiveLentBooks = () => {
+    if (!currentUser) return [];
+    
+    return requests.filter(r =>
+      r.ownerId === currentUser.id &&
+      r.requestType === 'borrow' &&
+      r.status === 'approved' &&
+      !r.returnedAt
+    );
+  };
+
   const value = {
     requests,
     loading,
     createRequest,
     updateRequestStatus,
+    updateRequestNotes,
+    updateDueDate,
     getOutgoingRequests,
     getIncomingRequests,
     getRequestById,
     getRequestsByBookId,
+    getRequestsByStatus,
     hasPendingRequest,
     deleteRequest,
+    isRequestOverdue,
+    getOverdueRequests,
+    getRequestsDueSoon,
+    getActiveBorrowedBooks,
+    getActiveLentBooks,
     refreshRequests: loadRequests
   };
 

@@ -5,6 +5,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { RequestProvider } from './context/RequestContext';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
 import MyLibrary from './pages/MyLibrary';
 import BookDetails from './pages/BookDetails';
 import Requests from './pages/Requests';
@@ -90,6 +91,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Home />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
                       </ProtectedRoute>
                     }
                   />
